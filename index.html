@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teacher Feedback Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#eef2f5; --paper:#ffffff; --ink:#17233b; --muted:#5d6b80; --line:#d5dde6;
+  --accent:#2446a6; --accent-soft:#e3e9f8; --marker:#f5cf4a; --danger:#b3372b;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+
+.hero{padding:48px 0 28px}
+.hero h1{font-family:var(--display);font-weight:700;font-size:clamp(2rem,4.5vw,3.2rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em;max-width:18ch}
+.hero h1 span{background:linear-gradient(transparent 58%,var(--marker) 58%,var(--marker) 92%,transparent 92%);padding:0 .08em}
+.hero p{margin:0;color:var(--muted);max-width:62ch;font-size:1.08rem}
+.privacy{margin-top:14px;display:inline-flex;gap:8px;align-items:center;font-size:.92rem;background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:5px 14px}
+
+.step{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:24px;margin-bottom:20px}
+.step-head{display:flex;gap:14px;align-items:baseline;margin-bottom:16px}
+.step-num{font-family:var(--display);font-weight:700;font-size:1.05rem;width:32px;height:32px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;flex:none;transform:translateY(4px)}
+.step h2{font-family:var(--display);font-weight:600;font-size:1.4rem;margin:0}
+.step-head p{margin:2px 0 0;color:var(--muted)}
+.hidden{display:none!important}
+
+.drop{border:2px dashed #a9b6c6;border-radius:12px;padding:28px 18px;text-align:center;cursor:pointer;background:#f7f9fb;transition:background .15s,border-color .15s}
+.drop.over{background:var(--accent-soft);border-color:var(--accent)}
+.drop strong{display:block;font-size:1.08rem;margin-bottom:4px}
+.drop small{color:var(--muted)}
+.field label{display:block;font-weight:600;margin-bottom:6px}
+.field .hint{font-size:.88rem;color:var(--muted);margin-top:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+input[type=text],input[type=url],input[type=search],select{border:1px solid #b9c4d2;border-radius:8px;padding:9px 11px;background:#fff;min-width:0}
+input[type=url]{flex:1}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:8px;padding:9px 16px;font-weight:600;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#26375a}
+.btn.ghost{background:#fff;color:var(--ink)}
+.btn.ghost:hover{background:var(--accent-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent)}
+.btn.primary:hover{background:#1b3887}
+.btn:disabled{opacity:.5;cursor:wait}
+.linkbtn{background:none;border:0;color:var(--accent);text-decoration:underline;cursor:pointer;padding:0;font-weight:600}
+.msg{margin-top:14px;padding:10px 14px;border-radius:8px;font-size:.95rem}
+.msg.err{background:#fbe9e7;color:var(--danger)}
+.msg.ok{background:#e6f3ec;color:#1d6b47}
+.msg a{color:inherit;font-weight:700}
+
+.cfg-top{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+@media (max-width:760px){.cfg-top{grid-template-columns:1fr}}
+.cfg-top select,.cfg-top input[type=text]{width:100%}
+.check{display:flex!important;gap:8px;align-items:flex-start;font-weight:400!important;font-size:.92rem;margin-top:10px;color:var(--muted)}
+.check input{margin-top:4px;accent-color:var(--accent)}
+.qtable td.k{text-align:center;width:1%}
+.qtable td.k input{width:18px;height:18px;accent-color:#b88a00;cursor:pointer}
+.qtable tr.key td{background:#fff8dc}
+.qtable tr.key td.q{font-weight:700}
+.qtable-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+table.qtable{border-collapse:collapse;width:100%;font-size:.95rem}
+.qtable th,.qtable td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:middle}
+.qtable th{background:#f4f7fa;font-weight:600;color:var(--muted);font-size:.88rem}
+.qtable tr:last-child td{border-bottom:0}
+.qtable td.q{max-width:480px}
+.qtable td.ex{color:var(--muted);font-size:.85rem;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qtable tr.off td.q{color:#98a3b3;text-decoration:line-through}
+.cfg-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap;align-items:center}
+.cfg-actions .note{color:var(--muted);font-size:.9rem;margin-right:auto}
+
+.res-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.res-bar .count{margin-right:auto;color:var(--muted)}
+.res-grid{display:grid;grid-template-columns:280px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:860px){.res-grid{grid-template-columns:1fr}}
+.side{position:sticky;top:12px}
+@media (max-width:860px){.side{position:static}}
+.side input{width:100%;margin-bottom:10px}
+.tlist{list-style:none;margin:0;padding:0;max-height:70vh;overflow:auto;border:1px solid var(--line);border-radius:10px}
+@media (max-width:860px){.tlist{max-height:240px}}
+.tlist button{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+.tlist li:last-child button{border-bottom:0}
+.tlist button:hover{background:#f4f7fa}
+.tlist button[aria-current=true]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--accent)}
+.tlist button:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.tname{font-weight:600;line-height:1.25}
+.tsub{font-size:.82rem;color:var(--muted)}
+.pill{font-size:.8rem;font-weight:700;padding:2px 8px;border-radius:999px;color:#fff;flex:none}
+.pane{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.pane-bar{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line);background:#f7f9fb}
+
+footer{color:var(--muted);font-size:.88rem;padding:24px 0 40px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media print{
+  body{background:#fff}
+  .hero,#step1,#step2,.res-bar,.side,.pane-bar,footer,.step-head{display:none!important}
+  #step3{border:0;padding:0}
+  .res-grid{display:block}
+  .pane{border:0}
+}
+</style>
+<style id="report-css"></style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <h1>Student feedback, sorted <span>by teacher</span></h1>
+    <p>Add the survey export from Google Sheets. Each teacher gets their own report with charts and every written comment, ready to download as a ZIP.</p>
+    <div class="privacy">🔒 Everything is processed in your browser. Nothing is uploaded.</div>
+  </header>
+
+  <section class="step" id="step1">
+    <div class="step-head"><span class="step-num">1</span><div><h2>Load the survey results</h2><p>Download the responses sheet from Google Sheets as an Excel file and add it here.</p></div></div>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Choose an Excel file">
+      <strong>Drop the Excel file here or click to choose</strong>
+      <small>In Google Sheets: File › Download › Microsoft Excel (.xlsx)</small>
+    </div>
+    <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+    <p style="margin:14px 0 0">No data yet? <button class="linkbtn" id="sample">Try it with sample data</button></p>
+    <div id="loadMsg"></div>
+  </section>
+
+  <section class="step hidden" id="step2">
+    <div class="step-head"><span class="step-num">2</span><div><h2>Check the questions</h2><p>Question types are detected automatically. Adjust anything that looks wrong.</p></div></div>
+    <div class="cfg-top">
+      <div class="field">
+        <label for="teacherCol">Which column has the teacher’s name?</label>
+        <select id="teacherCol"></select>
+        <label class="check"><input type="checkbox" id="splitTeachers" checked> A student may name several teachers in one answer (e.g. “Ms. Lee, Mr. Diaz”). Copy that response into each teacher’s report.</label>
+      </div>
+      <div class="field">
+        <label for="title">Report title</label>
+        <input type="text" id="title" placeholder="e.g. Q3 2026 student survey">
+        <label class="check"><input type="checkbox" id="scale6" checked> Report every rated question out of 6. Answers given on the 1–5 survey scale are converted so 1 stays 1 and 5 becomes 6.</label>
+      </div>
+    </div>
+    <div class="qtable-wrap">
+      <table class="qtable">
+        <thead><tr><th>Key question</th><th>Question</th><th>Show as</th><th>Answers</th><th>Example</th></tr></thead>
+        <tbody id="qbody"></tbody>
+      </table>
+    </div>
+    <div class="cfg-actions">
+      <span class="note">Key questions (★ highlighted) are shown first in every report. Timestamps, emails and student names are hidden to keep responses anonymous.</span>
+      <button class="btn primary" id="build">Build teacher reports</button>
+    </div>
+  </section>
+
+  <section class="step hidden" id="step3">
+    <div class="step-head"><span class="step-num">3</span><div><h2>Teacher reports</h2><p>Select a teacher to preview their report, then download.</p></div></div>
+    <div class="res-bar">
+      <span class="count" id="tcount"></span>
+      <button class="btn ghost" id="dlSummary">Download summary (CSV)</button>
+      <button class="btn primary" id="dlAll">Download all teachers (ZIP)</button>
+    </div>
+    <div id="dlMsg" style="margin:-4px 0 14px"></div>
+    <div class="res-grid">
+      <aside class="side">
+        <input type="search" id="tsearch" placeholder="Find a teacher" aria-label="Find a teacher">
+        <ul class="tlist" id="tlist"></ul>
+      </aside>
+      <div class="pane">
+        <div class="pane-bar">
+          <button class="btn ghost" id="printOne">Print / save as PDF</button>
+          <button class="btn" id="dlOne">Download this teacher (ZIP)</button>
+        </div>
+        <div id="report"></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>Each ZIP contains a printable report (report.html) with charts and the teacher’s responses (responses.csv), which opens in Excel or Google Sheets.</footer>
+</div>
+
+<script>
+/* ---------- Report styles (shared by the page and the downloaded files) ---------- */
+const REPORT_CSS = `
+.report{padding:28px 30px 36px;color:#17233b;font-family:"Source Sans 3","Segoe UI",system-ui,-apple-system,sans-serif;line-height:1.5}
+.report h1{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;font-size:2.1rem;line-height:1.1;margin:4px 0 10px;letter-spacing:-.02em}
+.report h1 span{background:linear-gradient(transparent 60%,#f5cf4a 60%,#f5cf4a 92%,transparent 92%);padding:0 .06em}
+.report h2{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;font-size:1.25rem;margin:0 0 4px}
+.r-title{color:#5d6b80;font-weight:600}
+.r-stats{display:flex;flex-wrap:wrap;gap:10px;margin:14px 0 26px}
+.r-stat{border:1px solid #d5dde6;border-radius:10px;padding:8px 14px;min-width:130px}
+.r-stat b{display:block;font-size:1.5rem;font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;line-height:1.2}
+.r-stat span{font-size:.85rem;color:#5d6b80}
+.r-sec{border-top:1px solid #d5dde6;padding:22px 0 6px;break-inside:avoid;page-break-inside:avoid}
+.r-q{font-size:1.08rem;font-weight:700;margin:0 0 2px}
+.r-key{background:#fff8dc;border:2px solid #f5cf4a;border-radius:12px;padding:18px 20px 16px;margin:0 0 26px;break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.r-key .r-q{font-size:1.25rem;margin-bottom:10px}
+.r-key-tag{font-weight:700;color:#8a6700;font-size:.9rem;margin-bottom:2px}
+.r-key-score{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 14px}
+.r-key-score>b{font-family:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;font-size:3.2rem;line-height:1}
+.r-key-score span{font-size:.92rem;color:#5d6b80;line-height:1.35}
+.r-key-cmp{border-left:1px solid #e3c65a;padding-left:16px}
+.r-key-cmp b{color:#17233b}
+.r-key .chart rect[fill="#eef2f5"]{fill:#fff}
+.r-sub{font-size:.88rem;color:#5d6b80;margin:0 0 12px}
+.r-sub b{color:#17233b}
+.chart{display:block;width:100%;max-width:680px;height:auto;font-family:inherit}
+.r-legend{font-size:.85rem;color:#5d6b80;margin:6px 0 0;display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+.r-legend i{display:inline-block;width:14px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.r-legend i.line{width:3px;height:14px;background:#17233b}
+.comments{list-style:none;padding:0;margin:0;display:grid;gap:8px;max-width:760px}
+.comments li{background:#f4f7fa;border-left:3px solid #2446a6;padding:8px 12px;border-radius:0 6px 6px 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.nums{display:flex;gap:10px;flex-wrap:wrap}
+.r-empty{color:#5d6b80;font-style:italic}
+.r-foot{margin-top:28px;font-size:.82rem;color:#5d6b80}
+.r-print{position:fixed;top:14px;right:14px;border:1px solid #17233b;background:#17233b;color:#fff;border-radius:8px;padding:8px 14px;font:600 14px system-ui,sans-serif;cursor:pointer}
+@media print{.r-print{display:none}.report{padding:0}}
+`;
+document.getElementById('report-css').textContent = REPORT_CSS;
+
+/* ---------- Helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean = v => String(v ?? '').replace(/\s+/g, ' ').trim();
+const trunc = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+const safeName = s => (String(s).normalize('NFKC').replace(/[^\p{L}\p{N}\- ]+/gu, '').trim().replace(/\s+/g, '_') || 'teacher').slice(0, 80);
+const fmt = (n, d = 2) => Number.isFinite(n) ? (Math.round(n * 10 ** d) / 10 ** d).toString() : '–';
+const isNum = v => /^-?\d+(?:[.,]\d+)?$/.test(v);
+const toNum = v => parseFloat(String(v).replace(',', '.'));
+const EMPTY_TEXT = new Set(['-', '.', 'n/a', 'na', 'none', 'nothing', '/', '--']);
+const smooth = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+
+const LIKERT = [
+  ['strongly disagree','disagree','neutral','agree','strongly agree'],
+  ['strongly disagree','disagree','neither agree nor disagree','agree','strongly agree'],
+  ['strongly disagree','somewhat disagree','neither agree nor disagree','somewhat agree','strongly agree'],
+  ['strongly disagree','somewhat disagree','neutral','somewhat agree','strongly agree'],
+  ['strongly disagree','disagree','agree','strongly agree'],
+  ['never','rarely','sometimes','often','always'],
+  ['never','rarely','sometimes','usually','always'],
+  ['very poor','poor','fair','good','excellent'],
+  ['poor','fair','good','very good','excellent'],
+  ['very poor','poor','average','good','excellent'],
+  ['very bad','bad','average','good','very good'],
+  ['very bad','bad','neutral','good','very good'],
+  ['very dissatisfied','dissatisfied','neutral','satisfied','very satisfied'],
+  ['not at all','slightly','moderately','very','extremely'],
+  ['not at all','a little','somewhat','quite a bit','very much'],
+  ['very difficult','difficult','neutral','easy','very easy'],
+];
+const TYPE_LABELS = {rating:'Rating (numbers)', likert:'Scale (e.g. agree / disagree)', choice:'Single choice', multi:'Multiple choice (checkboxes)', number:'Number (average)', text:'Written comments', ignore:'Hide'};
+const HIDE_RE = /time\s*stamp|e-?mail|student('?s)?\s*(name|id|number)|^\s*(your\s+)?(full\s+)?name\s*$|^\s*id\s*$/i;
+const KEY_RE = /thinking about your teacher only|how would you rate this teacher/i;
+const TEACHER_RE = /teacher|instructor|tutor|professor|lecturer|educator|faculty|trainer|учител|преподав|педагог|profesor|enseignant|lehrer|docente/i;
+
+const ANCH = ['#c8473a','#e6a23c','#c3c8d0','#4aa37f','#1f7a55'];
+const hex2rgb = h => [1,3,5].map(i => parseInt(h.slice(i, i + 2), 16));
+function scaleColors(n){
+  if (n <= 1) return [ANCH[4]];
+  return Array.from({length:n}, (_, i) => {
+    const t = i / (n - 1) * (ANCH.length - 1), a = Math.floor(t), b = Math.min(a + 1, ANCH.length - 1), f = t - a;
+    const A = hex2rgb(ANCH[a]), B = hex2rgb(ANCH[b]);
+    return '#' + A.map((v, k) => Math.round(v + (B[k] - v) * f).toString(16).padStart(2, '0')).join('');
+  });
+}
+function scoreColor(p){
+  if (p == null || !Number.isFinite(p)) return '#8a94a6';
+  return p >= 80 ? '#1f7a55' : p >= 65 ? '#3d8f6c' : p >= 50 ? '#c98a1e' : '#c8473a';
+}
+function msg(el, text, kind){ el.innerHTML = text ? `<div class="msg ${kind}">${text}</div>` : ''; }
+
+/* ---------- State ---------- */
+const state = { headers:[], rows:[], cols:[], teacherIdx:-1, teachers:[], overall:{}, current:0, title:'', scale6:true };
+
+/* ---------- Loading ---------- */
+const drop = $('#drop'), fileInput = $('#file'), loadMsg = $('#loadMsg');
+drop.addEventListener('click', () => fileInput.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); } });
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { const f = e.dataTransfer.files[0]; if (f) readFile(f); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) readFile(fileInput.files[0]); fileInput.value = ''; });
+
+function readFile(f){
+  const name = f.name.toLowerCase();
+  const reader = new FileReader();
+  reader.onerror = () => msg(loadMsg, 'The file could not be read. Download it again from Google Sheets as .xlsx and try once more.', 'err');
+  if (/\.(xlsx|xls)$/.test(name)) {
+    reader.onload = () => {
+      try {
+        const wb = XLSX.read(reader.result, {type:'array'});
+        const sheet = wb.SheetNames.map(n => wb.Sheets[n]).find(ws => ws['!ref']) || wb.Sheets[wb.SheetNames[0]];
+        ingest(XLSX.utils.sheet_to_json(sheet, {header:1, raw:false, defval:''}), f.name);
+      } catch (err) { msg(loadMsg, 'This Excel file could not be opened: ' + esc(err.message), 'err'); }
+    };
+    reader.readAsArrayBuffer(f);
+  } else if (name.endsWith('.csv')) {
+    reader.onload = () => parseCSV(reader.result, f.name);
+    reader.readAsText(f);
+  } else {
+    msg(loadMsg, 'This isn’t an Excel file. In Google Sheets choose File › Download › Microsoft Excel (.xlsx).', 'err');
+  }
+}
+function parseCSV(text, source){
+  const res = Papa.parse(text.replace(/^\uFEFF/, ''), {skipEmptyLines:'greedy'});
+  ingest(res.data, source);
+}
+
+$('#sample').addEventListener('click', () => ingest(sampleData(), 'sample data'));
+
+function ingest(aoa, source){
+  const rows = (aoa || []).map(r => r.map(c => c ?? '')).filter(r => r.some(c => clean(c) !== ''));
+  if (rows.length < 2) return msg(loadMsg, 'No responses found. The first row should contain the questions and the rows below it the answers.', 'err');
+  const width = Math.max(...rows.map(r => r.length));
+  const headers = Array.from({length:width}, (_, i) => clean(rows[0][i]) || `Column ${i + 1}`);
+  state.headers = headers;
+  state.rows = rows.slice(1).map(r => Array.from({length:width}, (_, i) => r[i] ?? ''));
+  state.cols = headers.map((h, idx) => {
+    const col = {name:h, idx};
+    col.type = HIDE_RE.test(h) ? 'ignore' : detectType(state.rows.map(r => r[idx]), h);
+    col.key = KEY_RE.test(h) && col.type !== 'ignore';
+    return col;
+  });
+  let t = headers.findIndex(h => TEACHER_RE.test(h) && !KEY_RE.test(h) && !/rate|how|\?/i.test(h));
+  if (t < 0) t = headers.findIndex(h => TEACHER_RE.test(h) && !KEY_RE.test(h));
+  if (t < 0) t = state.cols.findIndex(c => c.type === 'choice');
+  state.teacherIdx = Math.max(0, t);
+  msg(loadMsg, `Loaded ${state.rows.length} responses and ${headers.length} columns from ${esc(source)}.`, 'ok');
+  renderConfig();
+  $('#step2').classList.remove('hidden');
+  $('#step3').classList.add('hidden');
+  $('#step2').scrollIntoView({behavior: smooth()});
+}
+
+/* ---------- Type detection ---------- */
+function matchLikert(values){
+  const lower = [...new Set(values.map(v => v.toLowerCase()))];
+  return LIKERT.find(s => lower.every(v => s.includes(v))) || null;
+}
+const OPEN_RE = /\b(what|why|how could|how can|describe|explain|comment|suggest|improve|feedback on|anything else|other thoughts|opinion)\b|\?\s*$/i;
+function detectType(raw, header = ''){
+  const vals = raw.map(clean).filter(v => v !== '');
+  if (!vals.length) return 'ignore';
+  const uniq = [...new Set(vals)];
+  if (vals.every(isNum)) {
+    const nums = uniq.map(toNum);
+    return nums.every(Number.isInteger) && Math.max(...nums) - Math.min(...nums) <= 10 ? 'rating' : 'number';
+  }
+  if (uniq.length >= 2 && matchLikert(uniq)) return 'likert';
+  const withComma = vals.filter(v => /,\s/.test(v)).length;
+  if (withComma / vals.length > 0.15) {
+    const parts = new Set(vals.flatMap(v => v.split(/,\s+/)));
+    if (parts.size <= 15 && parts.size < uniq.length) return 'multi';
+  }
+  const avgLen = vals.reduce((a, v) => a + v.length, 0) / vals.length;
+  if (avgLen > 25 && OPEN_RE.test(header) && !/^(which|select|choose)\b/i.test(header)) return 'text';
+  if (avgLen < 40 && (uniq.length <= 12 || uniq.length <= vals.length * 0.25)) return 'choice';
+  return 'text';
+}
+
+/* Build shared categories for a column from ALL responses, so every teacher's chart uses the same scale */
+function prepareCol(col){
+  const vals = state.rows.map(r => clean(r[col.idx])).filter(v => v !== '');
+  col.eff = col.type; col.scale = null; col.scored = false;
+  const freq = arr => { const m = new Map(); arr.forEach(v => m.set(v, (m.get(v) || 0) + 1)); return [...m.entries()].sort((a, b) => b[1] - a[1]).map(e => e[0]); };
+  if (col.type === 'rating') {
+    const nums = vals.filter(isNum).map(toNum);
+    if (!nums.length) col.eff = 'choice';
+    else {
+      let lo = Math.min(...nums), hi = Math.max(...nums);
+      if (nums.every(Number.isInteger) && hi - lo <= 10) {
+        if (lo === 2) lo = 1;                       // show full 1–5 / 1–10 scale even if nobody chose 1
+        if (lo === 1 && hi === 4) hi = 5;
+        else if (lo === 1 && hi >= 8 && hi <= 9) hi = 10;
+        col.scale = Array.from({length:hi - lo + 1}, (_, i) => String(lo + i));
+        col.min = lo; col.max = hi; col.scored = hi > lo;
+      } else col.eff = 'number';
+    }
+  }
+  if (col.type === 'likert') {
+    const uniq = [...new Set(vals)];
+    const s = matchLikert(uniq);
+    if (!s) col.eff = 'choice';
+    else {
+      const byLower = new Map(uniq.map(u => [u.toLowerCase(), u]));
+      col.order = s;
+      col.scale = s.map(x => byLower.get(x) || x.charAt(0).toUpperCase() + x.slice(1));
+      col.min = 1; col.max = s.length; col.scored = true;
+    }
+  }
+  if (col.eff === 'choice') col.scale = freq(vals);
+  if (col.eff === 'multi') col.scale = freq(vals.flatMap(v => v.split(/,\s+/).map(clean).filter(Boolean)));
+}
+
+/* ---------- Config UI ---------- */
+function renderConfig(){
+  const sel = $('#teacherCol');
+  sel.innerHTML = state.headers.map((h, i) => `<option value="${i}" ${i === state.teacherIdx ? 'selected' : ''}>${esc(trunc(h, 90))}</option>`).join('');
+  sel.onchange = () => { state.teacherIdx = +sel.value; renderQuestions(); };
+  renderQuestions();
+}
+function renderQuestions(){
+  const body = $('#qbody');
+  body.innerHTML = state.cols.map(c => {
+    if (c.idx === state.teacherIdx) return '';
+    const vals = state.rows.map(r => clean(r[c.idx])).filter(Boolean);
+    const opts = Object.entries(TYPE_LABELS).map(([k, l]) => `<option value="${k}" ${k === c.type ? 'selected' : ''}>${l}</option>`).join('');
+    return `<tr class="${c.type === 'ignore' ? 'off' : ''} ${c.key ? 'key' : ''}" data-idx="${c.idx}">
+      <td class="k"><input type="checkbox" ${c.key ? 'checked' : ''} aria-label="Mark as key question: ${esc(c.name)}"></td>
+      <td class="q">${esc(c.name)}</td>
+      <td><select aria-label="How to show: ${esc(c.name)}">${opts}</select></td>
+      <td>${vals.length}</td>
+      <td class="ex" title="${esc(vals[0] || '')}">${esc(vals[0] || '—')}</td></tr>`;
+  }).join('');
+  body.querySelectorAll('td.k input').forEach(cb => cb.addEventListener('change', e => {
+    const tr = e.target.closest('tr'), col = state.cols[+tr.dataset.idx];
+    col.key = e.target.checked;
+    tr.classList.toggle('key', col.key);
+    if (col.key && col.type === 'ignore') { col.type = 'rating'; tr.querySelector('select').value = 'rating'; tr.classList.remove('off'); }
+  }));
+  body.querySelectorAll('select').forEach(s => s.addEventListener('change', e => {
+    const tr = e.target.closest('tr'), col = state.cols[+tr.dataset.idx];
+    col.type = e.target.value;
+    tr.classList.toggle('off', col.type === 'ignore');
+  }));
+}
+
+/* ---------- Analysis ---------- */
+function analyze(col, rows){
+  const vals = rows.map(r => clean(r[col.idx])).filter(v => v !== '');
+  const out = {n: vals.length};
+  if (col.eff === 'rating') {
+    const nums = vals.filter(isNum).map(toNum);
+    out.n = nums.length;
+    out.counts = col.scale.map(s => nums.filter(x => String(x) === s).length);
+    out.avg = nums.length ? nums.reduce((a, b) => a + b, 0) / nums.length : NaN;
+  } else if (col.eff === 'likert') {
+    const idx = vals.map(v => col.order.indexOf(v.toLowerCase())).filter(i => i >= 0);
+    out.n = idx.length;
+    out.counts = col.scale.map((_, i) => idx.filter(x => x === i).length);
+    out.avg = idx.length ? idx.reduce((a, b) => a + b + 1, 0) / idx.length : NaN;
+  } else if (col.eff === 'choice') {
+    out.counts = col.scale.map(s => vals.filter(v => v === s).length);
+  } else if (col.eff === 'multi') {
+    const sets = vals.map(v => new Set(v.split(/,\s+/).map(clean)));
+    out.counts = col.scale.map(s => sets.filter(set => set.has(s)).length);
+  } else if (col.eff === 'number') {
+    const nums = vals.filter(isNum).map(toNum).sort((a, b) => a - b);
+    out.n = nums.length;
+    if (nums.length) {
+      out.avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+      out.min = nums[0]; out.max = nums[nums.length - 1];
+      const m = Math.floor(nums.length / 2);
+      out.median = nums.length % 2 ? nums[m] : (nums[m - 1] + nums[m]) / 2;
+    }
+  } else if (col.eff === 'text') {
+    out.list = vals.filter(v => !EMPTY_TEXT.has(v.toLowerCase()));
+    out.n = out.list.length;
+  }
+  if (col.scored && Number.isFinite(out.avg)) out.pct = (out.avg - col.min) / (col.max - col.min) * 100;
+  return out;
+}
+/* Reporting scale: stretch every rated question onto 1–6 (1 stays 1, the top answer becomes 6) */
+const REPORT_MAX = 6;
+const repMax = c => (state.scale6 && c.scored) ? REPORT_MAX : c.max;
+function repAvg(c, r){
+  if (!r) return NaN;
+  if (!state.scale6 || !c.scored) return r.avg;
+  return Number.isFinite(r.pct) ? 1 + r.pct / 100 * (REPORT_MAX - 1) : NaN;
+}
+const converted = c => state.scale6 && c.scored && c.max !== REPORT_MAX;
+const scaleNote = c => converted(c) ? ` converted from the ${c.eff === 'likert' ? c.max + '-point' : c.min + '–' + c.max} survey scale` : '';
+
+function teacherNames(v, split){
+  const parts = split ? String(v ?? '').split(/\s*(?:[,;\/|&+\n]|\s+and\s+)\s*/i) : [String(v ?? '')];
+  const seen = new Set(), out = [];
+  parts.map(clean).filter(Boolean).forEach(n => { const k = n.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push(n); } });
+  return out;
+}
+const activeCols = () => state.cols.filter(c => c.idx !== state.teacherIdx && c.type !== 'ignore');
+const mean = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+
+$('#build').addEventListener('click', () => {
+  state.title = $('#title').value.trim();
+  state.scale6 = $('#scale6').checked;
+  const cols = activeCols();
+  if (!cols.length) return alert('All questions are hidden. Choose at least one question to include.');
+  cols.forEach(prepareCol);
+  const split = $('#splitTeachers').checked;
+  const groups = new Map();
+  let multiCount = 0;
+  state.rows.forEach(r => {
+    const names = teacherNames(r[state.teacherIdx], split);
+    if (names.length > 1) multiCount++;
+    names.forEach(raw => {
+      const key = raw.toLowerCase();
+      if (!groups.has(key)) groups.set(key, {name: raw, rows: [], shared: 0});
+      const g = groups.get(key);
+      g.rows.push(r);
+      if (names.length > 1) g.shared++;
+    });
+  });
+  if (!groups.size) return alert('The selected teacher column is empty. Choose the column that contains teacher names.');
+  const withTeacher = state.rows.filter(r => teacherNames(r[state.teacherIdx], split).length);
+  state.uniqueResponses = withTeacher.length;
+  state.overall = {};
+  cols.forEach(c => state.overall[c.idx] = analyze(c, withTeacher));
+  state.teachers = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name));
+  state.teachers.forEach(t => {
+    t.res = {};
+    cols.forEach(c => t.res[c.idx] = analyze(c, t.rows));
+    t.score = mean(cols.filter(c => c.scored).map(c => t.res[c.idx].pct).filter(Number.isFinite));
+  });
+  state.overallScore = mean(cols.filter(c => c.scored).map(c => state.overall[c.idx].pct).filter(Number.isFinite));
+  state.current = 0;
+  $('#tcount').textContent = `${state.teachers.length} teachers, ${withTeacher.length} responses` + (multiCount ? ` (${multiCount} named more than one teacher)` : '');
+  $('#tsearch').value = '';
+  renderList(); renderReport();
+  $('#step3').classList.remove('hidden');
+  $('#step3').scrollIntoView({behavior: smooth()});
+});
+
+/* ---------- Charts (inline SVG, so they also work inside downloaded reports) ---------- */
+function barChart(labels, counts, denom, colors){
+  const W = 680, LW = 210, RW = 90, BH = 24, GAP = 9, TW = W - LW - RW;
+  const H = labels.length * (BH + GAP) + GAP;
+  const max = Math.max(1, ...counts);
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Answer distribution" xmlns="http://www.w3.org/2000/svg">`;
+  labels.forEach((l, i) => {
+    const y = GAP + i * (BH + GAP), w = TW * counts[i] / max, pct = denom ? Math.round(counts[i] / denom * 100) : 0;
+    s += `<text x="${LW - 10}" y="${y + BH / 2 + 5}" text-anchor="end" font-size="14" fill="#3a4659"><title>${esc(l)}</title>${esc(trunc(l, 30))}</text>`;
+    s += `<rect x="${LW}" y="${y}" width="${TW}" height="${BH}" rx="4" fill="#eef2f5"/>`;
+    if (counts[i]) s += `<rect x="${LW}" y="${y}" width="${Math.max(w, 3).toFixed(1)}" height="${BH}" rx="4" fill="${colors[i % colors.length]}"/>`;
+    s += `<text x="${LW + TW + 10}" y="${y + BH / 2 + 5}" font-size="14" font-weight="700" fill="#17233b">${counts[i]}<tspan font-weight="400" fill="#5d6b80"> (${pct}%)</tspan></text>`;
+  });
+  return s + '</svg>';
+}
+function scoreChart(items){
+  const W = 680, LW = 270, RW = 80, BH = 20, GAP = 14, TW = W - LW - RW;
+  const H = items.length * (BH + GAP) + GAP;
+  let s = `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Average score per question" xmlns="http://www.w3.org/2000/svg">`;
+  items.forEach((it, i) => {
+    const y = GAP + i * (BH + GAP);
+    s += `<text x="${LW - 10}" y="${y + BH / 2 + 5}" text-anchor="end" font-size="13.5" fill="${it.key ? '#17233b' : '#3a4659'}" font-weight="${it.key ? 700 : 400}"><title>${esc(it.label)}</title>${esc(trunc(it.label, 36))}</text>`;
+    s += `<rect x="${LW}" y="${y}" width="${TW}" height="${BH}" rx="4" fill="#eef2f5"/>`;
+    if (Number.isFinite(it.pct)) s += `<rect x="${LW}" y="${y}" width="${Math.max(TW * it.pct / 100, 3).toFixed(1)}" height="${BH}" rx="4" fill="${scoreColor(it.pct)}"/>`;
+    if (Number.isFinite(it.overall)) {
+      const x = LW + TW * it.overall / 100;
+      s += `<rect x="${(x - 1.5).toFixed(1)}" y="${y - 4}" width="3" height="${BH + 8}" fill="#17233b"><title>All teachers: ${fmt(it.overall, 0)}%</title></rect>`;
+    }
+    s += `<text x="${LW + TW + 10}" y="${y + BH / 2 + 5}" font-size="14" font-weight="700" fill="#17233b">${fmt(it.avg)}<tspan font-weight="400" fill="#5d6b80"> / ${it.max}</tspan></text>`;
+  });
+  return s + '</svg>';
+}
+
+/* ---------- Report ---------- */
+function reportBody(t){
+  const cols = activeCols();
+  const scored = cols.filter(c => c.scored);
+  const date = new Date().toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+  let h = `<div class="report">`;
+  if (state.title) h += `<div class="r-title">${esc(state.title)}</div>`;
+  h += `<h1><span>${esc(t.name)}</span></h1>`;
+  h += `<div class="r-stats">
+    <div class="r-stat"><b>${t.rows.length}</b><span>student responses</span></div>
+    ${t.score != null ? `<div class="r-stat"><b style="color:${scoreColor(t.score)}">${fmt(t.score, 0)}%</b><span>overall score</span></div>` : ''}
+    ${t.score != null && state.overallScore != null ? `<div class="r-stat"><b>${fmt(state.overallScore, 0)}%</b><span>average, all teachers</span></div>` : ''}
+  </div>`;
+  if (t.shared) h += `<p class="r-sub" style="margin-top:-14px">${t.shared} of these students named more than one teacher in the same response, so their answers also appear in the other teachers’ reports.</p>`;
+
+  if (scored.length) {
+    h += `<section class="r-sec"><h2>Scores at a glance</h2><p class="r-sub">Average answer for each rated question, out of ${REPORT_MAX}${scored.some(converted) ? ', converted from the scale students answered on' : ''}. The dark marker shows the average across all teachers.</p>`;
+    h += scoreChart(scored.map(c => ({key:c.key, label:(c.key ? '★ ' : '') + c.name, avg:repAvg(c, t.res[c.idx]), pct:t.res[c.idx].pct, max:repMax(c), overall:state.overall[c.idx].pct})));
+    h += `<div class="r-legend"><span><i style="background:#1f7a55"></i>80% and above</span><span><i style="background:#3d8f6c"></i>65–79%</span><span><i style="background:#c98a1e"></i>50–64%</span><span><i style="background:#c8473a"></i>below 50%</span><span><i class="line"></i>all teachers</span></div></section>`;
+  }
+
+  cols.filter(c => c.key).forEach(c => {
+    const r = t.res[c.idx], o = state.overall[c.idx];
+    h += `<section class="r-key"><div class="r-key-tag">★ Key question</div><p class="r-q">${esc(c.name)}</p>`;
+    if (c.scored && r.n) {
+      h += `<div class="r-key-score"><b style="color:${scoreColor(r.pct)}">${fmt(repAvg(c, r))}</b><span>out of ${repMax(c)}${scaleNote(c) ? `,<br>${scaleNote(c).trim()}` : ''}<br>from ${r.n} student${r.n === 1 ? '' : 's'}</span>
+        ${Number.isFinite(o.avg) ? `<span class="r-key-cmp">All teachers: <b>${fmt(repAvg(c, o))}</b><br>${diffText(repAvg(c, r) - repAvg(c, o))}</span>` : ''}</div>`;
+    }
+    h += questionBody(c, r, o, !c.scored) + `</section>`;
+  });
+  cols.filter(c => !c.key).forEach(c => {
+    h += `<section class="r-sec"><p class="r-q">${esc(c.name)}</p>${questionBody(c, t.res[c.idx], state.overall[c.idx], true)}</section>`;
+  });
+  h += `<p class="r-foot">${scored.some(converted) ? `Averages are reported out of ${REPORT_MAX}: the lowest answer on the survey scale counts as 1 and the highest as ${REPORT_MAX}. ` : ''}Generated ${esc(date)}. Student identities are not included in this report.</p></div>`;
+  return h;
+}
+function diffText(d){
+  if (!Number.isFinite(d)) return '';
+  if (Math.abs(d) < 0.05) return 'Same as the average';
+  return `${fmt(Math.abs(d))} ${d > 0 ? 'above' : 'below'} the average`;
+}
+function questionBody(c, r, o, withSub){
+  let h = '';
+  if (!r.n) return `<p class="r-empty">No answers.</p>`;
+  if (c.eff === 'rating' || c.eff === 'likert') {
+    if (withSub) h += `<p class="r-sub"><b>${r.n}</b> answers. Average <b>${fmt(repAvg(c, r))}</b> out of ${repMax(c)}${Number.isFinite(o.avg) ? ` (all teachers: ${fmt(repAvg(c, o))})` : ''}${scaleNote(c) ? `,${scaleNote(c)}` : ''}</p>`;
+    h += barChart(c.scale, r.counts, r.n, scaleColors(c.scale.length));
+    if (converted(c)) h += `<p class="r-legend">Bars show the answers students actually chose on the ${c.eff === 'likert' ? c.max + '-point' : c.min + '–' + c.max} scale.</p>`;
+  } else if (c.eff === 'choice' || c.eff === 'multi') {
+    h += c.eff === 'multi'
+      ? `<p class="r-sub"><b>${r.n}</b> students answered. They could pick more than one option, so percentages add up to more than 100%.</p>`
+      : `<p class="r-sub"><b>${r.n}</b> answers</p>`;
+    const keep = c.scale.map((l, i) => [l, r.counts[i]]).filter(x => x[1] > 0);
+    h += barChart(keep.map(x => x[0]), keep.map(x => x[1]), r.n, ['#2446a6']);
+  } else if (c.eff === 'number') {
+    h += `<p class="r-sub"><b>${r.n}</b> answers</p><div class="nums">
+      <div class="r-stat"><b>${fmt(r.avg)}</b><span>average${Number.isFinite(o.avg) ? ` (all: ${fmt(o.avg)})` : ''}</span></div>
+      <div class="r-stat"><b>${fmt(r.median)}</b><span>median</span></div>
+      <div class="r-stat"><b>${fmt(r.min)} – ${fmt(r.max)}</b><span>range</span></div></div>`;
+  } else if (c.eff === 'text') {
+    h += r.list.length
+      ? `<p class="r-sub"><b>${r.n}</b> comments</p><ul class="comments">${r.list.map(v => `<li>${esc(v)}</li>`).join('')}</ul>`
+      : `<p class="r-empty">No comments.</p>`;
+  }
+  return h;
+}
+function standaloneReport(t){
+  const title = `${t.name}${state.title ? ' – ' + state.title : ''}`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#fff}.report{max-width:860px;margin:0 auto}${REPORT_CSS}</style></head>
+<body><button class="r-print" onclick="window.print()">Print / save as PDF</button>${reportBody(t)}</body></html>`;
+}
+function teacherCSV(t){
+  const cols = [state.cols[state.teacherIdx], ...activeCols()];
+  return '\uFEFF' + Papa.unparse({fields: cols.map(c => c.name), data: t.rows.map(r => cols.map(c => r[c.idx]))});
+}
+function summaryCSV(){
+  const scored = activeCols().filter(c => c.scored).sort((a, b) => (b.key ? 1 : 0) - (a.key ? 1 : 0));
+  const fields = ['Teacher', 'Responses', 'Overall score (%)', ...scored.map(c => `${c.key ? '★ ' : ''}${c.name} (average, out of ${repMax(c)}${scaleNote(c) ? ',' + scaleNote(c) : ''})`)];
+  const data = state.teachers.map(t => [t.name, t.rows.length, t.score != null ? fmt(t.score, 1) : '', ...scored.map(c => fmt(repAvg(c, t.res[c.idx])))]);
+  data.push(['All teachers (each response counted once)', state.uniqueResponses, state.overallScore != null ? fmt(state.overallScore, 1) : '', ...scored.map(c => fmt(repAvg(c, state.overall[c.idx])))]);
+  return '\uFEFF' + Papa.unparse({fields, data});
+}
+
+/* ---------- Results UI ---------- */
+function pillFor(t){
+  const k = activeCols().find(c => c.key && c.scored);
+  if (k && Number.isFinite(t.res[k.idx].avg)) return `<span class="pill" title="Key question average" style="background:${scoreColor(t.res[k.idx].pct)}">★ ${fmt(repAvg(k, t.res[k.idx]), 1)}/${repMax(k)}</span>`;
+  return t.score != null ? `<span class="pill" style="background:${scoreColor(t.score)}">${fmt(t.score, 0)}%</span>` : '';
+}
+function renderList(){
+  const q = $('#tsearch').value.trim().toLowerCase();
+  $('#tlist').innerHTML = state.teachers.map((t, i) => {
+    if (q && !t.name.toLowerCase().includes(q)) return '';
+    return `<li><button data-i="${i}" aria-current="${i === state.current}">
+      <span><span class="tname">${esc(t.name)}</span><br><span class="tsub">${t.rows.length} response${t.rows.length === 1 ? '' : 's'}</span></span>
+      ${pillFor(t)}
+    </button></li>`;
+  }).join('') || '<li style="padding:12px;color:var(--muted)">No teacher matches that search.</li>';
+}
+$('#tlist').addEventListener('click', e => {
+  const b = e.target.closest('button[data-i]');
+  if (!b) return;
+  state.current = +b.dataset.i;
+  renderList(); renderReport();
+  if (innerWidth <= 860) document.querySelector('.pane').scrollIntoView({behavior: smooth()});
+});
+$('#tsearch').addEventListener('input', renderList);
+function renderReport(){ $('#report').innerHTML = reportBody(state.teachers[state.current]); }
+
+let lastUrl = null;
+function downloadBlob(blob, name){
+  if (lastUrl) URL.revokeObjectURL(lastUrl);          // keep the newest file available until the next download
+  lastUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = lastUrl; a.download = name; a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => a.remove(), 1000);
+  const box = $('#dlMsg');
+  box.innerHTML = `<div class="msg ok">Downloaded <b>${esc(name)}</b> (${(blob.size / 1024).toFixed(0)} KB). Nothing saved? <a href="${lastUrl}" download="${esc(name)}">Save it again</a>.</div>`;
+  if (inFrame) box.innerHTML += `<div class="msg err">This page is running inside a preview window, which can block downloads. Open it in its own browser tab (for example your GitHub Pages link) to save the files.</div>`;
+}
+const inFrame = (() => { try { return window.self !== window.top; } catch (e) { return true; } })();
+async function makeZip(zip){
+  const data = await zip.generateAsync({type:'uint8array', compression:'DEFLATE', compressionOptions:{level:6}, platform:'DOS'});
+  return new Blob([data], {type:'application/zip'});
+}
+const zipPrefix = () => state.title ? safeName(state.title) + '_' : '';
+
+$('#dlOne').addEventListener('click', async e => {
+  const t = state.teachers[state.current], btn = e.currentTarget;
+  btn.disabled = true;
+  try {
+    const zip = new JSZip();
+    zip.file('report.html', standaloneReport(t));
+    zip.file('responses.csv', teacherCSV(t));
+    downloadBlob(await makeZip(zip), `${zipPrefix()}${safeName(t.name)}.zip`);
+  } catch (err) { $('#dlMsg').innerHTML = `<div class="msg err">The ZIP could not be created: ${esc(err.message)}</div>`; }
+  finally { btn.disabled = false; }
+});
+$('#dlAll').addEventListener('click', async e => {
+  const btn = e.currentTarget, label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Preparing ZIP…';
+  try {
+    const zip = new JSZip(), used = new Set();
+    state.teachers.forEach(t => {
+      let folder = safeName(t.name), n = 2;
+      while (used.has(folder)) folder = `${safeName(t.name)}_${n++}`;
+      used.add(folder);
+      const f = zip.folder(folder);
+      f.file('report.html', standaloneReport(t));
+      f.file('responses.csv', teacherCSV(t));
+    });
+    zip.file('summary_all_teachers.csv', summaryCSV());
+    downloadBlob(await makeZip(zip), `${zipPrefix()}all_teacher_reports.zip`);
+  } catch (err) { $('#dlMsg').innerHTML = `<div class="msg err">The ZIP could not be created: ${esc(err.message)}</div>`; }
+  finally { btn.disabled = false; btn.textContent = label; }
+});
+$('#dlSummary').addEventListener('click', () => downloadBlob(new Blob([summaryCSV()], {type:'text/csv;charset=utf-8'}), `${zipPrefix()}summary_all_teachers.csv`));
+$('#printOne').addEventListener('click', () => window.print());
+
+/* ---------- Sample data ---------- */
+function sampleData(){
+  const teachers = ['Ms. Alvarez', 'Mr. Chen', 'Dr. Okafor', 'Mrs. Petrova', 'Mr. Walsh'];
+  const bias = [0.8, 0.2, 0.6, -0.3, 0.1];
+  const subjects = ['Mathematics', 'Physics', 'Biology', 'English', 'History'];
+  const agree = ['Strongly disagree', 'Disagree', 'Neutral', 'Agree', 'Strongly agree'];
+  const freq = ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'];
+  const acts = ['Group work', 'Lectures', 'Practice problems', 'Projects', 'Class discussions', 'Quizzes'];
+  const good = ['Explains things step by step and checks that we understand.', 'Very patient when we ask questions.', 'Lessons are well organised and easy to follow.', 'Makes the subject interesting with real examples.', 'Always gives feedback on homework quickly.', 'Creates a friendly atmosphere in class.', 'Clear expectations for assignments.'];
+  const better = ['Sometimes goes too fast through new topics.', 'More practice before tests would help.', 'Homework instructions could be clearer.', 'Would like more group activities.', 'Please post slides online after class.', 'More time for questions at the end.', 'n/a'];
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  const lik = b => Math.max(0, Math.min(4, Math.round(2.5 + b * 1.2 + (Math.random() - 0.5) * 2.4)));
+  const rows = [['Timestamp', 'Email address', 'Select your teacher(s)', 'Subject', 'The teacher explains concepts clearly', 'The teacher is well prepared for lessons', 'How often does the teacher give useful feedback?', 'Thinking about your TEACHER only: How would you rate this teacher? (1–10)', 'The pace of the lessons is…', 'Which activities helped you learn the most?', 'What does the teacher do well?', 'What could the teacher improve?']];
+  for (let i = 0; i < 140; i++) {
+    const t = Math.floor(Math.random() * teachers.length), b = bias[t];
+    const d = new Date(2026, 8, 1 + Math.floor(Math.random() * 12), 8 + Math.floor(Math.random() * 9), Math.floor(Math.random() * 60));
+    rows.push([
+      d.toLocaleString(), `student${100 + i}@school.edu`, Math.random() < 0.15 ? `${teachers[t]}, ${teachers[(t + 1) % teachers.length]}` : teachers[t], subjects[t],
+      agree[lik(b)], agree[lik(b + 0.2)], freq[lik(b - 0.1)],
+      String(Math.max(1, Math.min(10, Math.round(7 + b * 2 + (Math.random() - 0.5) * 4)))),
+      Math.random() < 0.6 + b * 0.2 ? 'Just right' : pick(['Too slow', 'Too fast', 'Too fast']),
+      [...new Set(Array.from({length:1 + Math.floor(Math.random() * 3)}, () => pick(acts)))].join(', '),
+      Math.random() < 0.7 ? pick(good) : '',
+      Math.random() < 0.6 ? pick(better) : ''
+    ]);
+  }
+  return rows;
+}
+</script>
+</body>
+</html>
